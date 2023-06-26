@@ -108,6 +108,7 @@ bool willLive(int x, int y, int z){
     return false;
 }
 
+//copia o proximo estado para a matriz principal
 void copyArray(bool (nextMatrix)[rows][columns][depth]) {
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < columns; ++j) {
@@ -228,6 +229,7 @@ void drawFloor() {
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
     // Set up camera
@@ -313,9 +315,37 @@ int main(int argc, char** argv) {
     glutInitWindowSize(1200, 900);
     glutCreateWindow("Game of Life 3D");
 
+
+    GLfloat lightPosition[] = { 1.0, 1.0, 1.0, 0.0 };
+    GLfloat lightAmbient[] = { 0.2, 0.2, 0.2, 1.0 };
+    GLfloat lightDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+    GLfloat lightSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
+    GLfloat lightDirection[] = {columns/2, rows/2, depth/2};
+    GLfloat matAmbient[] = { 0.8, 0.8, 0.8, 1.0 };
+    GLfloat matDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+    GLfloat matSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
+    GLfloat matShininess[] = { 50.0 };
+
     initializeMatrix();
 
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_SPECULAR);
+
+    glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, lightDirection);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, matAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
+
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    glEnable(GL_COLOR_MATERIAL);
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
