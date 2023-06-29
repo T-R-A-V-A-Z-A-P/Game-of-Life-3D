@@ -10,24 +10,20 @@ bool matrix[rows][columns][depth]{};
 int matrixChange[rows][columns][depth]{0};
 
 // Camera position
-float cameraRotationSpeed = 0.007f;
+float cameraRotationSpeed = 0.005f;
 float cameraAngleX = 0.3;
-float cameraAngleY = 0.0;
-const float cameraDistance = std::min(rows, depth) + 12;
-int mousePrevX = 0;
-int mousePrevY = 0;
-bool isMouseLeftButtonPressed = false;
+float cameraAngleY = 3.5;
+const float cameraDistance = std::max(rows, depth) + std::max(rows, depth)*1.3;
 
 int seed = 237382;
 float prob = 0.2;
-
-
 
 int ALIVE = 3;
 int BORNING = 2;
 int DYING = 1;
 int DEAD = 0;
 
+float totalTime = 0;
 float elapsedTime = 0;
 float iterationTime = 6000;
 
@@ -142,16 +138,59 @@ void generateNextMatrix() {
     copyArray();
 }
 
-void drawCube(int x, int y, int z) {
+void drawCube( int type, GLfloat color[3], float size) {
+
+    GLfloat vertices[][3] = {
+        {-size / 2, -size / 2, -size / 2},
+        {size / 2, -size / 2, -size / 2},
+        {size / 2, size / 2, -size / 2},
+        {-size / 2, size / 2, -size / 2},
+        {-size / 2, -size / 2, size / 2},
+        {size / 2, -size / 2, size / 2},
+        {size / 2, size / 2, size / 2},
+        {-size / 2, size / 2, size / 2}
+    };
+
+    GLuint indices[][4] = {
+        {0, 1, 2, 3},
+        {1, 5, 6, 2},
+        {5, 4, 7, 6},
+        {4, 0, 3, 7},
+        {4, 5, 1, 0},
+        {3, 2, 6, 7}
+    };
+
+    GLfloat normals[][3] = {
+        {0, 0, -1},
+        {1, 0, 0},
+        {0, 0, 1},
+        {-1, 0, 0},
+        {0, -1, 0},
+        {0, 1, 0}
+    };
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+
+    glVertexPointer(3, GL_FLOAT, 0, vertices);
+    glNormalPointer(GL_FLOAT, 0, normals);
+
+    glColor3fv(color);
+
+    for (int i = 0; i < 6; i++) {
+        glDrawElements(type, 4, GL_UNSIGNED_INT, indices[i]);
+    }
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+}
+
+void drawCubeAnimation(int x, int y, int z) {
     glPushMatrix();
     glTranslatef(x, y, z);
 
-    // Desenhar um cubo
-    // GLfloat color[] = {randZO(), randZO(), randZO()};
-    // glColor3fv(color);
-
     float cubeSizeMultiplier = 1.0f;
-    GLfloat color[] = {0.8, 0.8, 0.8};
+    GLfloat color[] = {0.85, 0.85, 0.85};
 
     const float animationSlice = 0.8;
     const float scaleRate = elapsedTime / (iterationTime*animationSlice);
@@ -182,17 +221,12 @@ void drawCube(int x, int y, int z) {
         return;
     }
 
+    // Wireframe
+    GLfloat grey[] = {0.3, 0.3, 0.3};
+    drawCube(GL_LINE_LOOP, grey, 0.5*cubeSizeMultiplier);
 
-
-    // Enable wireframe rendering mode
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glColor3f(0.3f, 0.3f, 0.3f);
-    glutSolidCube(0.5*cubeSizeMultiplier);
-
-    // Disable wireframe rendering mode
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glColor3fv(color);
-    glutSolidCube(0.5*cubeSizeMultiplier);
+    // Cubes
+    drawCube(GL_QUADS, color, 0.5*cubeSizeMultiplier);
 
     glPopMatrix();
 }
@@ -202,11 +236,41 @@ void drawMatrix() {
         for (int j = 0; j < columns; ++j) {
             for (int k = 0; k < depth; ++k) {
                 if (matrixChange[i][j][k] != DEAD) {
-                    drawCube(i, j, k);
+                    drawCubeAnimation(i, j, k);
                 }
             }
         }
     }
+}
+
+void setupLighting() {
+    const GLfloat lightPosition[] = { 1.0, 1.0, 1.0, 0.0 };
+    const GLfloat lightAmbient[] = { 0.2, 0.2, 0.2, 1.0 };
+    const GLfloat lightDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+    const GLfloat lightSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
+    const GLfloat lightDirection[] = {columns/2, rows/2, depth/2};
+    const GLfloat matAmbient[] = { 0.8, 0.8, 0.8, 1.0 };
+    const GLfloat matDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+    const GLfloat matSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
+    const GLfloat matShininess[] = { 50.0 };
+
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_SPECULAR);
+
+    glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, lightDirection);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, matAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
+
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    glEnable(GL_COLOR_MATERIAL);
 }
 
 void display() {
@@ -224,6 +288,7 @@ void display() {
               0.0, 1.0, 0.0);
 
     drawMatrix();
+    setupLighting();
 
     glFlush();
     glutSwapBuffers();
@@ -237,31 +302,6 @@ void reshape(int width, int height) {
     glMatrixMode(GL_MODELVIEW);
 }
 
-void mouse(int button, int state, int x, int y) {
-    if (button == GLUT_LEFT_BUTTON) {
-        if (state == GLUT_DOWN) {
-            mousePrevX = x;
-            mousePrevY = y;
-            isMouseLeftButtonPressed = true;
-        } else if (state == GLUT_UP) {
-            isMouseLeftButtonPressed = false;
-        }
-    }
-}
-
-void motion(int x, int y) {
-    if (isMouseLeftButtonPressed) {
-        int deltaX = x - mousePrevX;
-        int deltaY = y - mousePrevY;
-        mousePrevX = x;
-        mousePrevY = y;
-
-        cameraAngleX += deltaY * 0.01;
-
-        glutPostRedisplay();
-    }
-}
-
 void timer(int value) {
     // Get the elapsed time since the last frame
     static int previousTime = glutGet(GLUT_ELAPSED_TIME);
@@ -270,6 +310,7 @@ void timer(int value) {
 
     previousTime = currentTime;
 
+    totalTime += deltaTime;
     elapsedTime += deltaTime;
 
     // Check if 2 seconds have passed
@@ -282,6 +323,7 @@ void timer(int value) {
     }
 
     cameraAngleY += cameraRotationSpeed;
+    cameraAngleX = sin(totalTime/(iterationTime/2))/3;
 
     glutPostRedisplay();
 
@@ -292,45 +334,15 @@ void timer(int value) {
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitWindowSize(1200, 900);
+    glutInitWindowSize(2560, 1440 );
     glutCreateWindow("Game of Life 3D");
-
-
-    GLfloat lightPosition[] = { 1.0, 1.0, 1.0, 0.0 };
-    GLfloat lightAmbient[] = { 0.2, 0.2, 0.2, 1.0 };
-    GLfloat lightDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-    GLfloat lightSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
-    GLfloat lightDirection[] = {columns/2, rows/2, depth/2};
-    GLfloat matAmbient[] = { 0.8, 0.8, 0.8, 1.0 };
-    GLfloat matDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-    GLfloat matSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
-    GLfloat matShininess[] = { 50.0 };
 
     initializeMatrix();
 
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_SPECULAR);
-
-    glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, lightDirection);
-    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
-    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT, matAmbient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
-
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-    glEnable(GL_COLOR_MATERIAL);
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
-    glutMouseFunc(mouse);
-    glutMotionFunc(motion);
     glutTimerFunc(0, timer, 0);
 
     glutMainLoop();
