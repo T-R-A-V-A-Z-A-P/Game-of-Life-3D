@@ -2,18 +2,23 @@
 #include <GL/glut.h>
 #include <cmath>
 
-//Matrix properties
+//Propriedades da matriz
 const int rows = 10;
 const int columns = 10;
 const int depth = 10;
 bool matrix[rows][columns][depth]{};
 int matrixChange[rows][columns][depth]{0};
 
-// Camera position
+// Posição de câmera
 float cameraRotationSpeed = 0.005f;
 float cameraAngleX = 0.3;
 float cameraAngleY = 3.5;
 const float cameraDistance = std::max(rows, depth) + std::max(rows, depth)*1.3;
+
+//Tempo
+float totalTime = 0;
+float elapsedTime = 0;
+const float iterationTime = 6000;
 
 int seed = 237382;
 float prob = 0.2;
@@ -23,9 +28,7 @@ int BORNING = 2;
 int DYING = 1;
 int DEAD = 0;
 
-float totalTime = 0;
-float elapsedTime = 0;
-float iterationTime = 6000;
+
 
 double randZO() {
     return ((double) rand() / (RAND_MAX));
@@ -139,7 +142,7 @@ void generateNextMatrix() {
 }
 
 void drawCube( int type, GLfloat color[3], float size) {
-
+    // Definição dos vértices do cubo
     GLfloat vertices[][3] = {
         {-size / 2, -size / 2, -size / 2},
         {size / 2, -size / 2, -size / 2},
@@ -151,6 +154,7 @@ void drawCube( int type, GLfloat color[3], float size) {
         {-size / 2, size / 2, size / 2}
     };
 
+    // Definição dos índices de vértices das faces
     GLuint indices[][4] = {
         {0, 1, 2, 3},
         {1, 5, 6, 2},
@@ -160,6 +164,7 @@ void drawCube( int type, GLfloat color[3], float size) {
         {3, 2, 6, 7}
     };
 
+    // Definição das normais para iluminação
     GLfloat normals[][3] = {
         {0, 0, -1},
         {1, 0, 0},
@@ -173,17 +178,22 @@ void drawCube( int type, GLfloat color[3], float size) {
     glEnableClientState(GL_NORMAL_ARRAY);
 
     glVertexPointer(3, GL_FLOAT, 0, vertices);
+
     glNormalPointer(GL_FLOAT, 0, normals);
 
+    // Define a cor do cubo
     glColor3fv(color);
 
+    // Desenha cada face do cubo
     for (int i = 0; i < 6; i++) {
         glDrawElements(type, 4, GL_UNSIGNED_INT, indices[i]);
     }
 
+    // Desabilita o uso de arrays de vértices e normais
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_NORMAL_ARRAY);
 }
+
 
 void drawCubeAnimation(int x, int y, int z) {
     glPushMatrix();
@@ -192,40 +202,40 @@ void drawCubeAnimation(int x, int y, int z) {
     float cubeSizeMultiplier = 1.0f;
     GLfloat color[] = {0.85, 0.85, 0.85};
 
-    const float animationSlice = 0.8;
-    const float scaleRate = elapsedTime / (iterationTime*animationSlice);
-    const float colorRateRed = elapsedTime / (iterationTime*animationSlice/4);
+    const float animationSlice = 0.8; // Parcela da iteração com animação
+    const float scaleRate = elapsedTime / (iterationTime*animationSlice); // Velocidade da animação
+    const float colorRateRed = elapsedTime / (iterationTime*animationSlice/4); // Velocidade mudança de cor vermelha
     const float degradeGreenThreshold = 0.5;
     float colorRateGreen = 0;
 
-    if (elapsedTime > iterationTime*0.5) {
-        colorRateGreen =
+    if (elapsedTime > iterationTime*0.5) { // Inicia a degradação da cor verde
+        colorRateGreen = // Velocidade mudança de cor
                 (elapsedTime - iterationTime*degradeGreenThreshold)
                 / (iterationTime*animationSlice - iterationTime*degradeGreenThreshold);
     }
 
     if( elapsedTime / iterationTime < animationSlice) {
-        if(matrixChange[x][y][z] == BORNING) {
+        if(matrixChange[x][y][z] == BORNING) { // Animação e coloração de células nascendo
             color[0] = 0.8*colorRateGreen;
             color[1] = 0.8;
             color[2] = 0.8*colorRateGreen;
             cubeSizeMultiplier = scaleRate;
-        } else if (matrixChange[x][y][z] == DYING) {
+        } else if (matrixChange[x][y][z] == DYING) { // Animação e coloração de células morrendo
             color[0] = 0.8;
             color[1] = 0.8 - 0.8*colorRateRed;
             color[2] = 0.8 - 0.8*colorRateRed;
             cubeSizeMultiplier = 1 - scaleRate;
         }
-    } else if (matrixChange[x][y][z] == DYING) {
+    } else if (matrixChange[x][y][z] == DYING) { // Pula células mortas
         glPopMatrix();
         return;
     }
 
-    // Wireframe
+    // Desenha o contorno
     GLfloat grey[] = {0.3, 0.3, 0.3};
     drawCube(GL_LINE_LOOP, grey, 0.5*cubeSizeMultiplier);
 
-    // Cubes
+    // Desenha os cubos
     drawCube(GL_QUADS, color, 0.5*cubeSizeMultiplier);
 
     glPopMatrix();
@@ -244,15 +254,16 @@ void drawMatrix() {
 }
 
 void setupLighting() {
-    const GLfloat lightPosition[] = { 1.0, 1.0, 1.0, 0.0 };
-    const GLfloat lightAmbient[] = { 0.2, 0.2, 0.2, 1.0 };
-    const GLfloat lightDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-    const GLfloat lightSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
-    const GLfloat lightDirection[] = {columns/2, rows/2, depth/2};
-    const GLfloat matAmbient[] = { 0.8, 0.8, 0.8, 1.0 };
-    const GLfloat matDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-    const GLfloat matSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
-    const GLfloat matShininess[] = { 50.0 };
+    const GLfloat lightPosition[] = { 1.0, 1.0, 1.0, 0.0 };  // Posição da fonte de luz
+    const GLfloat lightAmbient[] = { 0.2, 0.2, 0.2, 1.0 };   // Cor ambiente da luz
+    const GLfloat lightDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };   // Cor difusa da luz
+    const GLfloat lightSpecular[] = { 1.0, 1.0, 1.0, 1.0 };  // Cor especular da luz
+    const GLfloat lightDirection[] = {columns/2, rows/2, depth/2};  // Direção do feixe de luz
+
+    const GLfloat matAmbient[] = { 0.8, 0.8, 0.8, 1.0 };     // Cor ambiente do material
+    const GLfloat matDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };     // Cor difusa do material
+    const GLfloat matSpecular[] = { 1.0, 1.0, 1.0, 1.0 };    // Cor especular do material
+    const GLfloat matShininess[] = { 50.0 };                 // Rugosidade do material
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -270,6 +281,7 @@ void setupLighting() {
     glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
 
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+
     glEnable(GL_COLOR_MATERIAL);
 }
 
@@ -278,7 +290,7 @@ void display() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    // Set up camera
+    // Reposiciona a câmera
     gluLookAt(float(rows)/2 + cameraDistance * sin(cameraAngleY) * cos(cameraAngleX),
               float(columns)/2 + cameraDistance * sin(cameraAngleX),
               float(depth)/2 + cameraDistance * cos(cameraAngleY) * cos(cameraAngleX),
@@ -287,8 +299,8 @@ void display() {
               float(depth)/2,
               0.0, 1.0, 0.0);
 
-    drawMatrix();
-    setupLighting();
+    drawMatrix(); // Desenha a matriz
+    setupLighting(); // Configura iluminação
 
     glFlush();
     glutSwapBuffers();
@@ -303,7 +315,6 @@ void reshape(int width, int height) {
 }
 
 void timer(int value) {
-    // Get the elapsed time since the last frame
     static int previousTime = glutGet(GLUT_ELAPSED_TIME);
     int currentTime = glutGet(GLUT_ELAPSED_TIME);
     int deltaTime = currentTime - previousTime;
@@ -313,21 +324,19 @@ void timer(int value) {
     totalTime += deltaTime;
     elapsedTime += deltaTime;
 
-    // Check if 2 seconds have passed
     if (elapsedTime >= iterationTime) {
-        elapsedTime = 0; // Reset the elapsed time
+        elapsedTime = 0; // Inicia nova iteração
 
-        // Generate the next state and update the display
-        generateNextMatrix();
-
+        generateNextMatrix(); // Gera matriz da próxima iteração
     }
 
+    // Atualiza os ângulos das câmeras
     cameraAngleY += cameraRotationSpeed;
     cameraAngleX = sin(totalTime/(iterationTime/2))/3;
 
     glutPostRedisplay();
 
-    glutTimerFunc(16, timer, 0); // Continue the timer
+    glutTimerFunc(16, timer, 0);
 }
 
 
