@@ -71,7 +71,7 @@ bool isCoordinateValid(int x, int y, int z) {
     return true;
 }
 
-bool willLive(int x, int y, int z){
+bool willLive(int x, int y, int z) {
     int livingNeighbours = 0;
     int x_neighbour;
     int y_neighbour;
@@ -108,30 +108,29 @@ bool willLive(int x, int y, int z){
     return false;
 }
 
-//copia o proximo estado para a matriz principal
-void copyArray(bool (nextMatrix)[rows][columns][depth]) {
+void copyArray() {
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < columns; ++j) {
             for (int k = 0; k < depth; ++k) {
-                matrix[i][j][k] = nextMatrix[i][j][k];
+                if (matrixChange[i][j][k] == DYING || matrixChange[i][j][k] == BORNING) {
+                    matrix[i][j][k] = !matrix[i][j][k];
+                }
             }
         }
     }
 }
 
 void generateNextMatrix() {
-    bool nextMatrix[rows][columns][depth];
-
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < columns; ++j) {
             for (int k = 0; k < depth; ++k) {
-                nextMatrix[i][j][k] = willLive(i, j, k);
+                bool alive = willLive(i, j, k);
 
-                if (matrix[i][j][k] && !nextMatrix[i][j][k]) {
+                if (matrix[i][j][k] && !alive) {
                     matrixChange[i][j][k] = DYING;
-                } else if (!matrix[i][j][k] && nextMatrix[i][j][k]) {
+                } else if (!matrix[i][j][k] && alive) {
                     matrixChange[i][j][k] = BORNING;
-                } else if (matrix[i][j][k] && nextMatrix[i][j][k]) {
+                } else if (matrix[i][j][k] && alive) {
                     matrixChange[i][j][k] = ALIVE;
                 } else {
                     matrixChange[i][j][k] = DEAD;
@@ -140,7 +139,7 @@ void generateNextMatrix() {
         }
     }
 
-    copyArray(nextMatrix);
+    copyArray();
 }
 
 void drawCube(int x, int y, int z) {
@@ -210,23 +209,6 @@ void drawMatrix() {
     }
 }
 
-void drawFloor() {
-    glBegin(GL_QUADS);
-
-    GLfloat color[] = {0.65, 0.65, 0.65};
-
-    const float height = -3.0;
-    const float edge = 5;
-
-    glColor3fv(color);
-    glVertex3f(-edge, height, -edge);
-    glVertex3f(-edge, height, depth+edge);
-    glVertex3f(rows+edge, height, depth+edge);
-    glVertex3f(rows+edge, height, -edge);
-
-    glEnd();
-}
-
 void display() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
@@ -241,7 +223,6 @@ void display() {
               float(depth)/2,
               0.0, 1.0, 0.0);
 
-    drawFloor();
     drawMatrix();
 
     glFlush();
@@ -276,7 +257,6 @@ void motion(int x, int y) {
         mousePrevY = y;
 
         cameraAngleX += deltaY * 0.01;
-        // cameraAngleY += deltaX * 0.01;
 
         glutPostRedisplay();
     }
